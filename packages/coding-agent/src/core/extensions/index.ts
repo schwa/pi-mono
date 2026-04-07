@@ -146,6 +146,10 @@ export type {
 	UserBashEvent,
 	UserBashEventResult,
 	WidgetPlacement,
+	// Events - Window Focus
+	WindowBlurEvent,
+	WindowEvent,
+	WindowFocusEvent,
 	WriteToolCallEvent,
 	WriteToolResultEvent,
 } from "./types.js";

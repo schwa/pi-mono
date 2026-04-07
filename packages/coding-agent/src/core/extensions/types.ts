@@ -855,6 +855,22 @@ export function isToolCallEventType(toolName: string, event: ToolCallEvent): boo
 	return event.toolName === toolName;
 }
 
+// ============================================================================
+// Window Focus Events
+// ============================================================================
+
+/** Fired when the terminal window gains focus */
+export interface WindowFocusEvent {
+	type: "window_focus";
+}
+
+/** Fired when the terminal window loses focus */
+export interface WindowBlurEvent {
+	type: "window_blur";
+}
+
+export type WindowEvent = WindowFocusEvent | WindowBlurEvent;
+
 /** Union of all event types */
 export type ExtensionEvent =
 	| ResourcesDiscoverEvent
@@ -876,7 +892,8 @@ export type ExtensionEvent =
 	| UserBashEvent
 	| InputEvent
 	| ToolCallEvent
-	| ToolResultEvent;
+	| ToolResultEvent
+	| WindowEvent;
 
 // ============================================================================
 // Event Results
@@ -1024,6 +1041,8 @@ export interface ExtensionAPI {
 	on(event: "tool_result", handler: ExtensionHandler<ToolResultEvent, ToolResultEventResult>): void;
 	on(event: "user_bash", handler: ExtensionHandler<UserBashEvent, UserBashEventResult>): void;
 	on(event: "input", handler: ExtensionHandler<InputEvent, InputEventResult>): void;
+	on(event: "window_focus", handler: ExtensionHandler<WindowFocusEvent>): void;
+	on(event: "window_blur", handler: ExtensionHandler<WindowBlurEvent>): void;
 
 	// =========================================================================
 	// Tool Registration

@@ -412,11 +412,20 @@ export class TUI extends Container {
 		for (const overlay of this.overlayStack) overlay.component.invalidate?.();
 	}
 
+	/** Focus change handler for extensions */
+	private focusChangeHandler?: (focused: boolean) => void;
+
+	/** Set a handler for terminal window focus changes */
+	setFocusChangeHandler(handler: ((focused: boolean) => void) | undefined): void {
+		this.focusChangeHandler = handler;
+	}
+
 	start(): void {
 		this.stopped = false;
 		this.terminal.start(
 			(data) => this.handleInput(data),
 			() => this.requestRender(),
+			(focused) => this.focusChangeHandler?.(focused),
 		);
 		this.terminal.hideCursor();
 		this.queryCellSize();

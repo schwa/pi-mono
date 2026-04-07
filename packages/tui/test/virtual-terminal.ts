@@ -1,6 +1,6 @@
 import type { Terminal as XtermTerminalType } from "@xterm/headless";
 import xterm from "@xterm/headless";
-import type { Terminal } from "../src/terminal.js";
+import type { FocusChangeHandler, Terminal } from "../src/terminal.js";
 
 // Extract Terminal class from the module
 const XtermTerminal = xterm.Terminal;
@@ -12,6 +12,7 @@ export class VirtualTerminal implements Terminal {
 	private xterm: XtermTerminalType;
 	private inputHandler?: (data: string) => void;
 	private resizeHandler?: () => void;
+	private focusChangeHandler?: FocusChangeHandler;
 	private _columns: number;
 	private _rows: number;
 
@@ -29,11 +30,17 @@ export class VirtualTerminal implements Terminal {
 		});
 	}
 
-	start(onInput: (data: string) => void, onResize: () => void): void {
+	start(onInput: (data: string) => void, onResize: () => void, onFocusChange?: FocusChangeHandler): void {
 		this.inputHandler = onInput;
 		this.resizeHandler = onResize;
+		this.focusChangeHandler = onFocusChange;
 		// Enable bracketed paste mode for consistency with ProcessTerminal
 		this.xterm.write("\x1b[?2004h");
+	}
+
+	/** Test helper: simulate the terminal gaining or losing focus */
+	simulateFocusChange(focused: boolean): void {
+		this.focusChangeHandler?.(focused);
 	}
 
 	async drainInput(_maxMs?: number, _idleMs?: number): Promise<void> {
@@ -45,6 +52,7 @@ export class VirtualTerminal implements Terminal {
 		this.xterm.write("\x1b[?2004l");
 		this.inputHandler = undefined;
 		this.resizeHandler = undefined;
+		this.focusChangeHandler = undefined;
 	}
 
 	write(data: string): void {

@@ -80,6 +80,23 @@ describe("StdinBuffer", () => {
 			processInput(ss3);
 			assert.deepStrictEqual(emittedSequences, [ss3]);
 		});
+
+		it("should pass through focus-in sequence (DEC 1004)", () => {
+			const focusIn = "\x1b[I";
+			processInput(focusIn);
+			assert.deepStrictEqual(emittedSequences, [focusIn]);
+		});
+
+		it("should pass through focus-out sequence (DEC 1004)", () => {
+			const focusOut = "\x1b[O";
+			processInput(focusOut);
+			assert.deepStrictEqual(emittedSequences, [focusOut]);
+		});
+
+		it("should split focus events from surrounding input", () => {
+			processInput("a\x1b[Ib\x1b[Oc");
+			assert.deepStrictEqual(emittedSequences, ["a", "\x1b[I", "b", "\x1b[O", "c"]);
+		});
 	});
 
 	describe("Partial Escape Sequences", () => {

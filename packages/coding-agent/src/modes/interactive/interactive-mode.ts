@@ -532,6 +532,9 @@ export class InteractiveMode {
 		// Initialize extensions first so resources are shown before messages
 		await this.bindCurrentSessionExtensions();
 
+		// Set up focus change handler to emit window focus/blur events to extensions
+		this.setupFocusChangeHandler();
+
 		// Render initial messages AFTER showing loaded resources
 		this.renderInitialMessages();
 
@@ -2094,6 +2097,22 @@ export class InteractiveMode {
 		} catch {
 			// Silently ignore clipboard errors (may not have permission, etc.)
 		}
+	}
+
+	/**
+	 * Set up the focus change handler to emit window_focus/window_blur events to extensions.
+	 */
+	private setupFocusChangeHandler(): void {
+		this.ui.setFocusChangeHandler((focused) => {
+			const extensionRunner = this.session.extensionRunner;
+			if (!extensionRunner) return;
+
+			if (focused) {
+				extensionRunner.emit({ type: "window_focus" });
+			} else {
+				extensionRunner.emit({ type: "window_blur" });
+			}
+		});
 	}
 
 	private setupEditorSubmitHandler(): void {

@@ -6,12 +6,15 @@ import { StdinBuffer } from "./stdin-buffer.js";
 
 const cjsRequire = createRequire(import.meta.url);
 
+/** Handler for terminal window focus changes */
+export type FocusChangeHandler = (focused: boolean) => void;
+
 /**
  * Minimal terminal interface for TUI
  */
 export interface Terminal {
 	// Start the terminal with input and resize handlers
-	start(onInput: (data: string) => void, onResize: () => void): void;
+	start(onInput: (data: string) => void, onResize: () => void, onFocusChange?: FocusChangeHandler): void;
 
 	// Stop the terminal and restore state
 	stop(): void;
@@ -57,6 +60,7 @@ export class ProcessTerminal implements Terminal {
 	private wasRaw = false;
 	private inputHandler?: (data: string) => void;
 	private resizeHandler?: () => void;
+	private focusChangeHandler?: FocusChangeHandler;
 	private _kittyProtocolActive = false;
 	private _modifyOtherKeysActive = false;
 	private stdinBuffer?: StdinBuffer;
@@ -80,9 +84,10 @@ export class ProcessTerminal implements Terminal {
 		return this._kittyProtocolActive;
 	}
 
-	start(onInput: (data: string) => void, onResize: () => void): void {
+	start(onInput: (data: string) => void, onResize: () => void, onFocusChange?: FocusChangeHandler): void {
 		this.inputHandler = onInput;
 		this.resizeHandler = onResize;
+		this.focusChangeHandler = onFocusChange;
 
 		// Save previous state and enable raw mode
 		this.wasRaw = process.stdin.isRaw || false;
@@ -94,6 +99,9 @@ export class ProcessTerminal implements Terminal {
 
 		// Enable bracketed paste mode - terminal will wrap pastes in \x1b[200~ ... \x1b[201~
 		process.stdout.write("\x1b[?2004h");
+
+		// Enable focus reporting - terminal sends \x1b[I on focus, \x1b[O on blur
+		process.stdout.write("\x1b[?1004h");
 
 		// Set up resize handler immediately
 		process.stdout.on("resize", this.resizeHandler);
@@ -147,6 +155,18 @@ export class ProcessTerminal implements Terminal {
 					process.stdout.write("\x1b[>7u");
 					return; // Don't forward protocol response to TUI
 				}
+			}
+
+			// Check for focus reporting sequences
+			if (sequence === "\x1b[I") {
+				// Focus gained
+				this.focusChangeHandler?.(true);
+				return; // Don't forward focus sequence to TUI
+			}
+			if (sequence === "\x1b[O") {
+				// Focus lost
+				this.focusChangeHandler?.(false);
+				return; // Don't forward focus sequence to TUI
 			}
 
 			if (this.inputHandler) {
@@ -264,6 +284,9 @@ export class ProcessTerminal implements Terminal {
 		// Disable bracketed paste mode
 		process.stdout.write("\x1b[?2004l");
 
+		// Disable focus reporting
+		process.stdout.write("\x1b[?1004l");
+
 		// Disable Kitty keyboard protocol if not already done by drainInput()
 		if (this._kittyProtocolActive) {
 			process.stdout.write("\x1b[<u");
@@ -287,6 +310,7 @@ export class ProcessTerminal implements Terminal {
 			this.stdinDataHandler = undefined;
 		}
 		this.inputHandler = undefined;
+		this.focusChangeHandler = undefined;
 		if (this.resizeHandler) {
 			process.stdout.removeListener("resize", this.resizeHandler);
 			this.resizeHandler = undefined;
